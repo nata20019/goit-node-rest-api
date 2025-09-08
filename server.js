@@ -1,15 +1,14 @@
 import mongoose from "mongoose";
-import app from "./app.js";
 
-const DB_HOST =
-  "mongodb+srv://Nata:wbP5G2yXRPtSwgl7@cluster0.7obljfi.mongodb.net/contacts?retryWrites=true&w=majority&appName=Cluster0";
+const DB_HOST = process.env.DB_HOST;
+
+console.log(DB_HOST);
+console.log(process.env.DB_HOST);
 
 mongoose
   .connect(DB_HOST)
   .then(() => {
-    app.listen(3000, () => {
-      console.log("Server is running. Use our API on port: 3000");
-    });
+    console.log("Server is running. Use our API on port: 3000");
   })
   .catch((error) => {
     console.log(error.message);
