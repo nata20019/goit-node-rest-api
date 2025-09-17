@@ -3,6 +3,7 @@ import HttpError from "../helpers/HttpError.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import "dotenv/config";
+
 const { JWT_SECRET } = process.env;
 
 const signup = async (req, res) => {
@@ -19,10 +20,12 @@ const signup = async (req, res) => {
   res.status(201).json({
     username: newUser.username,
     email: newUser.email,
+    subscription: newUser.subscription,
   });
 };
 
 const signin = async (req, res) => {
+  // try {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
   if (!user) {
@@ -38,9 +41,21 @@ const signin = async (req, res) => {
   };
 
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "23h" });
-
+  // console.log(token);
+  // const decodeToken = jwt.decode(token);
+  // console.log(decodeToken);
+  // await User.findByIdAndUpdate(user._id, { token });
+  try {
+    const { id } = jwt.verify(token, JWT_SECRET);
+    console.log(id);
+  } catch (error) {
+    console.log(error.message);
+  }
   res.json({
     token,
   });
+  // } catch (error) {
+  //   next(error);
+  // }
 };
 export default { signup, signin };
