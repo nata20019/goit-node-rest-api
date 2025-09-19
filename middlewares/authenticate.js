@@ -5,7 +5,7 @@ import "dotenv/config";
 
 const { JWT_SECRET } = process.env;
 
-const authenticate = (req, res, next) => {
+const authenticate = async (req, res, next) => {
   const { authorization = "" } = req.headers;
   const [bearer, token] = authorization.split(" ");
   if (bearer !== "Bearer") {
@@ -13,7 +13,10 @@ const authenticate = (req, res, next) => {
   }
   try {
     const { id } = jwt.verify(token, JWT_SECRET);
-    const user = User.findById(id);
+    const user = await User.findById(id);
+    if (!user) {
+      throw HttpError(401, "User not found");
+    }
     // if (!user || !user.token || user.token !== token) {
     //   throw HttpError(401, "Not authorized");
     // }

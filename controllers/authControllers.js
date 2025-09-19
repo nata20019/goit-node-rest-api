@@ -44,7 +44,7 @@ const signin = async (req, res) => {
   // console.log(token);
   // const decodeToken = jwt.decode(token);
   // console.log(decodeToken);
-  // await User.findByIdAndUpdate(user._id, { token });
+  await User.findByIdAndUpdate(user._id, { token });
   try {
     const { id } = jwt.verify(token, JWT_SECRET);
     console.log(id);
@@ -53,9 +53,22 @@ const signin = async (req, res) => {
   }
   res.json({
     token,
+    user: { email: user.email, subscription: user.subscription },
   });
   // } catch (error) {
   //   next(error);
   // }
 };
-export default { signup, signin };
+
+const getCurrent = async (req, res) => {
+  const { email, subscription } = req.user;
+  res.json({ email, subscription });
+};
+
+const logout = async (req, res) => {
+  const { _id } = req.user;
+  await User.findByIdAndUpdate(_id, { token: "" });
+  res.json({ message: "Logout success" });
+};
+
+export default { signup, signin, getCurrent, logout };
