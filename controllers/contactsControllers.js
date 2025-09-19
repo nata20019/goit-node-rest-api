@@ -8,7 +8,8 @@ export const getAllContacts = async (req, res, next) => {
     console.log(req.query);
     const { page = 1, limit = 20, favorite } = req.query;
     const skip = (page - 1) * limit;
-    const contacts = await Contact.find({ owner }, "-createdAt -updatedAt", {
+    const filter = favorite ? { owner, favorite: favorite } : { owner };
+    const contacts = await Contact.find(filter, "-createdAt -updatedAt", {
       skip,
       limit,
     }).populate("owner", "email");
