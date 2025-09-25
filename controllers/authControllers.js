@@ -1,3 +1,5 @@
+import fs from "fs/promises";
+import path from "path";
 import { User } from "../models/user.js";
 import HttpError from "../helpers/HttpError.js";
 import jwt from "jsonwebtoken";
@@ -6,21 +8,37 @@ import "dotenv/config";
 
 const { JWT_SECRET } = process.env;
 
+const avatarsPath = path.resolve("public", "avatars");
+console.log(avatarsPath);
+
 const signup = async (req, res) => {
   const { email, password } = req.body;
+  console.log(req.file);
+  console.log(req.body);
   const user = await User.findOne({ email });
   if (user) {
     throw HttpError(409, "Email in use");
   }
 
+  const { path: oldPath, originalname } = req.file;
+  const newPath = path.join(avatarsPath, originalname);
+  await fs.rename(oldPath, newPath);
+  const avatarURL = path.join("avatars", originalname);
+  console.log(avatarURL);
+
   const hashPassword = await bcrypt.hash(password, 10);
 
-  const newUser = await User.create({ ...req.body, password: hashPassword });
+  const newUser = await User.create({
+    ...req.body,
+    password: hashPassword,
+    avatarURL,
+  });
 
   res.status(201).json({
     username: newUser.username,
     email: newUser.email,
     subscription: newUser.subscription,
+    avatarURL: newUser.avatarURL,
   });
 };
 
