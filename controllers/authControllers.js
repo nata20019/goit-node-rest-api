@@ -5,41 +5,46 @@ import HttpError from "../helpers/HttpError.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import "dotenv/config";
+import gravatar from "gravatar";
+import { AVATARS_PATH } from "../constants/index.js";
 
 const { JWT_SECRET } = process.env;
 
-const avatarsPath = path.resolve("public", "avatars");
-console.log(avatarsPath);
-
 const signup = async (req, res) => {
-  const { email, password } = req.body;
-  console.log(req.file);
-  console.log(req.body);
-  const user = await User.findOne({ email });
-  if (user) {
-    throw HttpError(409, "Email in use");
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (user) {
+      throw HttpError(409, "Email in use");
+    }
+    let avatarURL;
+    if (!req.file) {
+      avatarURL = gravatar.url(email);
+    } else {
+      const { path: oldPath, originalname } = req.file;
+      const newPath = path.join(AVATARS_PATH, originalname);
+      await fs.rename(oldPath, newPath);
+      avatarURL = path.join("avatars", originalname);
+    }
+    const hashPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await User.create({
+      ...req.body,
+      password: hashPassword,
+      avatarURL,
+    });
+
+    res.status(201).json({
+      username: newUser.username,
+      email: newUser.email,
+      subscription: newUser.subscription,
+      avatarURL: newUser.avatarURL,
+    });
+  } catch (error) {
+    await fs.unlink(req.file.path);
+    throw error;
   }
-
-  const { path: oldPath, originalname } = req.file;
-  const newPath = path.join(avatarsPath, originalname);
-  await fs.rename(oldPath, newPath);
-  const avatarURL = path.join("avatars", originalname);
-  console.log(avatarURL);
-
-  const hashPassword = await bcrypt.hash(password, 10);
-
-  const newUser = await User.create({
-    ...req.body,
-    password: hashPassword,
-    avatarURL,
-  });
-
-  res.status(201).json({
-    username: newUser.username,
-    email: newUser.email,
-    subscription: newUser.subscription,
-    avatarURL: newUser.avatarURL,
-  });
 };
 
 const signin = async (req, res) => {
