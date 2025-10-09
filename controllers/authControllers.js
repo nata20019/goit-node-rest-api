@@ -7,6 +7,8 @@ import bcrypt from "bcryptjs";
 import "dotenv/config";
 import gravatar from "gravatar";
 import { AVATARS_PATH } from "../constants/index.js";
+import sendEmail from "../helpers/sendEmail.js";
+import { nanoid } from "nanoid";
 
 const { JWT_SECRET } = process.env;
 
@@ -28,12 +30,19 @@ const signup = async (req, res) => {
       avatarURL = path.join("avatars", originalname);
     }
     const hashPassword = await bcrypt.hash(password, 10);
-
+    const verificationToken = nanoid();
     const newUser = await User.create({
       ...req.body,
       password: hashPassword,
       avatarURL,
+      verificationToken,
     });
+    const verifyEmail = {
+      to: email,
+      subject: "Verify your email",
+      html: `<a target="_blank" href="http://localhost:3000/api/auth/verify/${verificationToken}">Click to verify your email</a>`,
+    };
+    await sendEmail(verifyEmail);
 
     res.status(201).json({
       username: newUser.username,
@@ -47,6 +56,37 @@ const signup = async (req, res) => {
   }
 };
 
+const verifyEmail = async (req, res) => {
+  const { verificationToken } = req.params;
+  const user = await User.findOne({ verificationToken });
+  if (!user) {
+    throw HttpError(404, "User not found");
+  }
+  await User.findByIdAndUpdate(user._id, {
+    verify: true,
+    verificationToken: null,
+  });
+  res.json({ message: "Email verify success" });
+};
+
+const resendVerifyEmail = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) {
+    throw HttpError(404, "User not found");
+  }
+  if (user.verify) {
+    throw HttpError(400, "Verification has already been passed");
+  }
+  const verifyEmail = {
+    to: email,
+    subject: "Verify your email",
+    html: `<a target="_blank" href="http://localhost:3000/api/auth/verify/${user.verificationToken}">Click to verify your email</a>`,
+  };
+  await sendEmail(verifyEmail);
+  res.json({ message: "Verify email sent" });
+};
+
 const signin = async (req, res) => {
   // try {
   const { email, password } = req.body;
@@ -58,7 +98,9 @@ const signin = async (req, res) => {
   if (!passwordCompare) {
     throw HttpError(401, "Email or password invalid");
   }
-
+  if (!user.verify) {
+    throw HttpError(401, "Email not verified");
+  }
   const payload = {
     id: user._id,
   };
@@ -94,4 +136,11 @@ const logout = async (req, res) => {
   res.status(204).json({ message: "No content" });
 };
 
-export default { signup, signin, getCurrent, logout };
+export default {
+  signup,
+  verifyEmail,
+  resendVerifyEmail,
+  signin,
+  getCurrent,
+  logout,
+};
