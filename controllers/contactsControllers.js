@@ -5,7 +5,6 @@ import contactsService from "../services/contactsServices.js";
 export const getAllContacts = async (req, res, next) => {
   try {
     const { _id: owner } = req.user;
-    console.log(req.query);
     const { page = 1, limit = 20, favorite } = req.query;
     const skip = (page - 1) * limit;
     const filter = favorite ? { owner, favorite: favorite } : { owner };

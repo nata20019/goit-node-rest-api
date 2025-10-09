@@ -1,16 +1,22 @@
 import fs from "fs/promises";
 import path from "path";
-import { User } from "../models/user.js";
-import HttpError from "../helpers/HttpError.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import "dotenv/config";
 import gravatar from "gravatar";
+import { nanoid } from "nanoid";
+import { User } from "../models/user.js";
+import HttpError from "../helpers/HttpError.js";
 import { AVATARS_PATH } from "../constants/index.js";
 import sendEmail from "../helpers/sendEmail.js";
-import { nanoid } from "nanoid";
+import "dotenv/config";
 
 const { JWT_SECRET } = process.env;
+
+const createVerifyEmail = (email, verificationToken) => ({
+  to: email,
+  subject: "Verify your email",
+  html: `<a target="_blank" href="${process.env.SERVER_URL}/api/auth/verify/${verificationToken}">Click to verify your email</a>`,
+});
 
 const signup = async (req, res) => {
   try {
@@ -37,11 +43,7 @@ const signup = async (req, res) => {
       avatarURL,
       verificationToken,
     });
-    const verifyEmail = {
-      to: email,
-      subject: "Verify your email",
-      html: `<a target="_blank" href="http://localhost:3000/api/auth/verify/${verificationToken}">Click to verify your email</a>`,
-    };
+    const verifyEmail = createVerifyEmail(email, verificationToken);
     await sendEmail(verifyEmail);
 
     res.status(201).json({
@@ -78,17 +80,12 @@ const resendVerifyEmail = async (req, res) => {
   if (user.verify) {
     throw HttpError(400, "Verification has already been passed");
   }
-  const verifyEmail = {
-    to: email,
-    subject: "Verify your email",
-    html: `<a target="_blank" href="http://localhost:3000/api/auth/verify/${user.verificationToken}">Click to verify your email</a>`,
-  };
+  const verifyEmail = createVerifyEmail(email, user.verificationToken);
   await sendEmail(verifyEmail);
   res.json({ message: "Verify email sent" });
 };
 
 const signin = async (req, res) => {
-  // try {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
   if (!user) {
@@ -106,23 +103,11 @@ const signin = async (req, res) => {
   };
 
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "23h" });
-  // console.log(token);
-  // const decodeToken = jwt.decode(token);
-  // console.log(decodeToken);
   await User.findByIdAndUpdate(user._id, { token });
-  try {
-    const { id } = jwt.verify(token, JWT_SECRET);
-    console.log(id);
-  } catch (error) {
-    console.log(error.message);
-  }
   res.json({
     token,
     user: { email: user.email, subscription: user.subscription },
   });
-  // } catch (error) {
-  //   next(error);
-  // }
 };
 
 const getCurrent = async (req, res) => {
