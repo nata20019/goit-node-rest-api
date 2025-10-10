@@ -53,7 +53,9 @@ const signup = async (req, res) => {
       avatarURL: newUser.avatarURL,
     });
   } catch (error) {
-    await fs.unlink(req.file.path);
+    if (req.file?.path) {
+      await fs.unlink(req.file.path);
+    }
     throw error;
   }
 };
